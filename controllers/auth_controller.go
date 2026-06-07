@@ -6,24 +6,17 @@ import (
 	"backend/utils"
 	"fmt"
 	"net/http"
-	"time"
-
-	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/gin-gonic/gin"
 )
 
 type AuthController struct {
 	UserService *services.UserService
-	jwtSecret   []byte
-	tokenExp    time.Duration
 }
 
-func NewAuthController(s *services.UserService, jwt []byte) *AuthController {
+func NewAuthController(s *services.UserService) *AuthController {
 	return &AuthController{
 		UserService: s,
-		jwtSecret:   jwt,
-		tokenExp:    1 * time.Hour,
 	}
 }
 
@@ -48,7 +41,7 @@ func (c *AuthController) Register(ctx *gin.Context) {
 		return
 	}
 
-	user, err := c.UserService.Create(&input)
+	user, err := c.UserService.RegisterService(&input)
 
 	if err != nil {
 		utils.ErrorResponse(ctx, "An error occured!", err.Error(), http.StatusInternalServerError)
@@ -67,48 +60,19 @@ func (c *AuthController) Login(ctx *gin.Context) {
 		return
 	}
 
-	user, err := c.UserService.GetByEmail(input.Email)
+	data, err := c.UserService.LoginService(&input)
 
 	if err != nil {
 		utils.ErrorResponse(ctx, "An error occured!", err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if user == nil {
+	if data == nil {
 		utils.ErrorResponse(ctx, "Invalid Credentials email", nil, http.StatusUnauthorized)
 		return
 	}
 
-	check := utils.CheckPasswordHash(input.Password, user.Password)
-
-	if !check {
-		utils.ErrorResponse(ctx, "Invalid Credentials password", nil, http.StatusUnauthorized)
-		return
-	}
-
-	now := time.Now()
-
-	claims := jwt.MapClaims{
-		"user_id": user.Id,
-		"email":   user.Email,
-		"iat":     now.Unix(),
-		"exp":     now.Add(c.tokenExp).Unix(),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(c.jwtSecret)
-	if err != nil {
-		utils.ErrorResponse(ctx, "An error occured", nil, http.StatusInternalServerError)
-		return
-	}
-
-	resp := map[string]any{
-		"token":      tokenString,
-		"expires_in": int64(c.tokenExp.Seconds()),
-		"type":       "Bearer",
-	}
-
-	utils.SuccessResponse(ctx, "Login success!", resp, http.StatusOK)
+	utils.SuccessResponse(ctx, "Login success!", data, http.StatusOK)
 }
 
 func (c *AuthController) Logout(ctx *gin.Context) {

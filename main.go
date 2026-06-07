@@ -40,6 +40,7 @@ func main() {
 	public_api := router.Group("/v1/api")
 	protected_api := router.Group("/v1/api")
 	protected_api.Use(middleware.AuthMiddleware([]byte(cfg.JWT.SecretKey)))
+	protected_api.Use(middleware.RateLimitMiddleware())
 
 	expenseServices := services.NewExpenseService(DB)
 	expenseController := controllers.NewExpenseController(expenseServices)

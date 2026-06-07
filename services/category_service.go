@@ -2,42 +2,28 @@ package services
 
 import (
 	"backend/models"
+	"backend/repository"
 	"backend/requests"
+	"errors"
 
 	"gorm.io/gorm"
 )
 
 type CategoryService struct {
-	DB *gorm.DB
+	CR repository.CategoryRepository
 }
 
-func NewCategoryService(db *gorm.DB) *CategoryService {
+func NewCategoryService(cr repository.CategoryRepository) *CategoryService {
 	return &CategoryService{
-		DB: db,
+		CR: cr,
 	}
 }
 
-func (s *CategoryService) GetAll() ([]models.Category, error) {
-	var categories []models.Category
-
-	err := s.DB.Find(&categories).Error
-
+func (s *CategoryService) GetByUserId(userId uint) ([]models.Category, error) {
+	categories, err := s.CR.GetAllByUserID(userId)
 	if err != nil {
 		return nil, err
 	}
-
-	return categories, nil
-}
-
-func (s *CategoryService) GetByUserId(userId int) ([]models.Category, error) {
-	var categories []models.Category
-
-	err := s.DB.Where("user_id = ?", userId).Find(&categories).Error
-
-	if err != nil {
-		return nil, err
-	}
-
 	return categories, nil
 }
 
@@ -49,7 +35,7 @@ func (s *CategoryService) Create(input *requests.CategoryRequest, userId int) (*
 		Color:   input.Color,
 	}
 
-	err := s.DB.Create(&category).Error
+	err := s.CR.Create(&category)
 
 	if err != nil {
 		return nil, err
@@ -58,22 +44,18 @@ func (s *CategoryService) Create(input *requests.CategoryRequest, userId int) (*
 	return &category, nil
 }
 
-func (s *CategoryService) GetDetail(id int, userId int) (*models.Category, error) {
-	var category models.Category
-	err := s.DB.First(&category, id).Error
-
+func (s *CategoryService) GetDetail(id uint, userId uint) (*models.Category, error) {
+	category, err := s.CR.GetByIDAndUserId(id, userId)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("Resources not found")
+		}
 		return nil, err
 	}
-
-	if category.UserId != userId {
-		return nil, ErrForbidden
-	}
-
-	return &category, nil
+	return category, nil
 }
 
-func (s *CategoryService) Update(id int, input *requests.CategoryRequest, userId int) (*models.Category, error) {
+func (s *CategoryService) Update(id uint, input *requests.CategoryRequest, userId uint) (*models.Category, error) {
 	var category models.Category
 
 	err := s.DB.First(&category, id).Error
@@ -100,7 +82,7 @@ func (s *CategoryService) Update(id int, input *requests.CategoryRequest, userId
 	return &category, nil
 }
 
-func (s *CategoryService) Delete(id int, userId int) (bool, error) {
+func (s *CategoryService) Delete(id uint, userId uint) (bool, error) {
 	var category models.Category
 
 	err := s.DB.First(&category, id).Error

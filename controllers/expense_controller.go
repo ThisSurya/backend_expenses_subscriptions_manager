@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"backend/models"
 	"backend/requests"
 	"backend/services"
 	"backend/utils"
@@ -24,10 +23,13 @@ func NewExpenseController(s *services.ExpenseService) *ExpenseController {
 }
 
 func (c *ExpenseController) GetAllExpenses(ctx *gin.Context) {
-	var expenses []models.Expense
-	var err error
+	userId, err := utils.GetUserIdFromSession(ctx)
+	if err != nil {
+		utils.ErrorResponse(ctx, "Error occured when fetching expenses", err, http.StatusUnauthorized)
+		return
+	}
 
-	expenses, err = c.Service.GetAll()
+	expenses, err := c.Service.GetByUserId(userId)
 	if err != nil {
 		ctx.JSON(500, gin.H{"error": "Failed to retrieve expenses", "success": false})
 		return
@@ -43,18 +45,21 @@ func (c *ExpenseController) GetAllExpenses(ctx *gin.Context) {
 func (c *ExpenseController) GetExpenseByUserId(ctx *gin.Context) {
 	userId, err := utils.GetUserIdFromSession(ctx)
 	if err != nil {
-		utils.ErrorResponse(ctx, "Unauthorized", err, http.StatusUnauthorized)
+		utils.ErrorResponse(ctx, "Error occured when fetching expenses", err, http.StatusUnauthorized)
 		return
 	}
 
 	expenses, err := c.Service.GetByUserId(userId)
-
 	if err != nil {
-		utils.ErrorResponse(ctx, "Error occured when find Expense", nil, http.StatusInternalServerError)
+		ctx.JSON(500, gin.H{"error": "Failed to retrieve expenses", "success": false})
 		return
 	}
 
-	utils.SuccessResponse(ctx, "Expense retrieved successfully", expenses, http.StatusOK)
+	ctx.JSON(200, gin.H{
+		"message": "Expenses retrieved successfully",
+		"data":    expenses,
+		"success": true,
+	})
 }
 
 func (c *ExpenseController) CreateExpense(ctx *gin.Context) {
@@ -72,7 +77,7 @@ func (c *ExpenseController) CreateExpense(ctx *gin.Context) {
 		return
 	}
 
-	expense, err := c.Service.Create(&input, userId)
+	expense, err := c.Service.Create(&input, int(userId))
 	if err != nil {
 		utils.ErrorResponse(ctx, "Error while insert expenses!", err, http.StatusInternalServerError)
 		return
