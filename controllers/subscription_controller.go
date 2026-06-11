@@ -5,12 +5,10 @@ import (
 	"backend/services"
 	"backend/utils"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 type SubscriptionController struct {
@@ -27,8 +25,7 @@ func (s *SubscriptionController) GetSubscriptionByUserId(ctx *gin.Context) {
 	userId, err := utils.GetUserIdFromSession(ctx)
 
 	if err != nil {
-		// fmt.Println("Error somethinc")
-		utils.ErrorResponse(ctx, "Error getting user Id at session", err, http.StatusInternalServerError)
+		utils.ErrorResponse(ctx, "Unauthorized", err, http.StatusUnauthorized)
 		return
 	}
 
@@ -39,12 +36,17 @@ func (s *SubscriptionController) GetSubscriptionByUserId(ctx *gin.Context) {
 		return
 	}
 
-	utils.SuccessResponse(ctx, "Success get subcsriptions", subscription, http.StatusOK)
+	utils.SuccessResponse(ctx, "Success get subscriptions", subscription, http.StatusOK)
 }
 
 func (s *SubscriptionController) CreateSubscription(ctx *gin.Context) {
 	var input requests.SubscriptionRequest
-	err := ctx.ShouldBindJSON(&input)
+
+	if err := ctx.ShouldBindJSON(&input); err != nil {
+		errs := utils.FormatValidationError(err)
+		utils.ErrorResponse(ctx, "An Error occured!", errs, http.StatusBadRequest)
+		return
+	}
 
 	userId, err := utils.GetUserIdFromSession(ctx)
 	if err != nil {
@@ -52,13 +54,7 @@ func (s *SubscriptionController) CreateSubscription(ctx *gin.Context) {
 		return
 	}
 
-	if err != nil {
-		errors := utils.FormatValidationError(err)
-		utils.ErrorResponse(ctx, "An Error occured!", errors, http.StatusBadRequest)
-		return
-	}
-
-	subscription, err := s.Service.Create(input, userId)
+	subscription, err := s.Service.Create(input, int(userId))
 
 	if err != nil {
 		utils.ErrorResponse(ctx, "Error creating subscription", err, http.StatusInternalServerError)
@@ -84,19 +80,17 @@ func (s *SubscriptionController) GetSubscriptionDetail(ctx *gin.Context) {
 		return
 	}
 
-	subscription, err := s.Service.GetDetail(idsubs, userId)
+	subscription, err := s.Service.GetDetail(uint(idsubs), userId)
 
 	if err != nil {
-		if errors.Is(err, services.ErrForbidden) {
+		if errors.Is(err, utils.ErrForbidden) {
 			utils.ErrorResponse(ctx, "Forbidden", nil, http.StatusForbidden)
 			return
 		}
-
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, utils.ErrNotFound) {
 			utils.ErrorResponse(ctx, "Subscription not found!", nil, http.StatusNotFound)
 			return
 		}
-
 		utils.ErrorResponse(ctx, "Error while getting detail subscriptions", nil, http.StatusInternalServerError)
 		return
 	}
@@ -115,29 +109,34 @@ func (s *SubscriptionController) UpdateSubscription(ctx *gin.Context) {
 	}
 
 	userId, err := utils.GetUserIdFromSession(ctx)
-
-	var input requests.SubscriptionRequest
-	err = ctx.ShouldBindJSON(&input)
-
 	if err != nil {
-		errors := utils.FormatValidationError(err)
-		utils.ErrorResponse(ctx, "An error occured!", errors, http.StatusBadRequest)
+		utils.ErrorResponse(ctx, "Unauthorized", nil, http.StatusUnauthorized)
 		return
 	}
 
-	subscription, err := s.Service.Update(idSubs, &input, userId)
+	var input requests.SubscriptionRequest
+	if err = ctx.ShouldBindJSON(&input); err != nil {
+		errs := utils.FormatValidationError(err)
+		utils.ErrorResponse(ctx, "An error occured!", errs, http.StatusBadRequest)
+		return
+	}
+
+	subscription, err := s.Service.Update(uint(idSubs), &input, int(userId))
 
 	if err != nil {
-		if errors.Is(err, services.ErrForbidden) {
-			utils.ErrorResponse(ctx, "Unauthorized", nil, http.StatusUnauthorized)
+		if errors.Is(err, utils.ErrForbidden) {
+			utils.ErrorResponse(ctx, "Forbidden", nil, http.StatusForbidden)
 			return
 		}
-
+		if errors.Is(err, utils.ErrNotFound) {
+			utils.ErrorResponse(ctx, "Subscription not found!", nil, http.StatusNotFound)
+			return
+		}
 		utils.ErrorResponse(ctx, "Error updating subscription", nil, http.StatusInternalServerError)
 		return
 	}
 
-	utils.SuccessResponse(ctx, "Sucess updating subcriptions", subscription, http.StatusAccepted)
+	utils.SuccessResponse(ctx, "Success updating subscriptions", subscription, http.StatusAccepted)
 }
 
 func (s *SubscriptionController) DeleteSubscription(ctx *gin.Context) {
@@ -155,18 +154,20 @@ func (s *SubscriptionController) DeleteSubscription(ctx *gin.Context) {
 		return
 	}
 
-	err = s.Service.Delete(idSubs, userId)
+	err = s.Service.Delete(uint(idSubs), int(userId))
 
 	if err != nil {
-		fmt.Println("[ERROR OCCURED!]: ", err)
-		if errors.Is(err, services.ErrForbidden) {
-			utils.ErrorResponse(ctx, "Unauthorized", nil, http.StatusUnauthorized)
+		if errors.Is(err, utils.ErrForbidden) {
+			utils.ErrorResponse(ctx, "Forbidden", nil, http.StatusForbidden)
 			return
 		}
-
+		if errors.Is(err, utils.ErrNotFound) {
+			utils.ErrorResponse(ctx, "Subscription not found!", nil, http.StatusNotFound)
+			return
+		}
 		utils.ErrorResponse(ctx, "Error while deleting subscription", nil, http.StatusInternalServerError)
 		return
 	}
 
-	utils.SuccessResponse(ctx, "Sucess deleting subscription", nil, http.StatusAccepted)
+	utils.SuccessResponse(ctx, "Success deleting subscription", nil, http.StatusAccepted)
 }

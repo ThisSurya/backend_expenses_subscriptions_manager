@@ -5,7 +5,6 @@ import (
 	"backend/repository"
 	"backend/requests"
 	"backend/utils"
-	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -51,8 +50,8 @@ func (s *UserService) RegisterService(input *requests.UserRequest) (*models.User
 		return nil, err
 	}
 
-	if exists == true {
-		return nil, errors.New("Email exists")
+	if exists {
+		return nil, utils.ErrEmailExists
 	}
 
 	user := models.User{
@@ -88,7 +87,7 @@ func (s *UserService) LoginService(input *requests.UserLoginRequest) (interface{
 	check := utils.CheckPasswordHash(input.Password, user.Password)
 
 	if !check {
-		return nil, errors.New("Invalid credentials")
+		return nil, utils.ErrInvalidCredentials
 	}
 
 	now := time.Now()
@@ -133,7 +132,7 @@ func (s *UserService) Update(id uint, input *requests.UserRequest) (*models.User
 	}
 
 	if check.Id != int(id) {
-		return nil, errors.New("Resource not found")
+		return nil, utils.ErrNotFound
 	}
 
 	user := models.User{

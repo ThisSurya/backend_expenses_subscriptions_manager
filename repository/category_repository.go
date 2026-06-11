@@ -2,6 +2,7 @@ package repository
 
 import (
 	"backend/models"
+	"backend/utils"
 	"errors"
 
 	"gorm.io/gorm"
@@ -34,7 +35,7 @@ func (r *CategoryRepositoryImpl) GetByIDAndUserId(ID uint, userId uint) (*models
 	err := r.DB.Where("id = ? AND user_id = ?", ID, userId).First(&category).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrNotFound
+			return nil, utils.ErrNotFound
 		}
 		return nil, err
 	}
@@ -54,7 +55,7 @@ func (r *CategoryRepositoryImpl) Delete(ID uint) error {
 	result := r.DB.Where("id = ?", ID).Delete(&category)
 
 	if result.RowsAffected == 0 {
-		return ErrNotFound
+		return utils.ErrNotFound
 	}
 
 	return result.Error

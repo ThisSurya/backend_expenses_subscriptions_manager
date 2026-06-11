@@ -2,6 +2,7 @@ package repository
 
 import (
 	"backend/models"
+	"backend/utils"
 	"errors"
 
 	"gorm.io/gorm"
@@ -25,7 +26,7 @@ func NewSubscriptionController(db *gorm.DB) *SubscriptionRepositoryImpl {
 	}
 }
 
-func (r *SubscriptionRepositoryImpl) Create(model *models.Expense) error {
+func (r *SubscriptionRepositoryImpl) Create(model *models.Subscription) error {
 	return r.DB.Create(model).Error
 }
 
@@ -37,7 +38,7 @@ func (r *SubscriptionRepositoryImpl) GetByIDAndUserId(ID uint, userID uint) (*mo
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrNotFound
+			return nil, utils.ErrNotFound
 		}
 		return nil, err
 	}
@@ -57,12 +58,12 @@ func (r *SubscriptionRepositoryImpl) Delete(ID uint) error {
 	result := r.DB.Where("id = ?", ID).Delete(&subscription)
 
 	if result.RowsAffected == 0 {
-		return ErrNotFound
+		return utils.ErrNotFound
 	}
 	return result.Error
 }
 
-func (r *SubscriptionRepositoryImpl) GetAllByUserId(userID uint) ([]models.Subscription, error) {
+func (r *SubscriptionRepositoryImpl) GetAllByUserID(userID uint) ([]models.Subscription, error) {
 	var subscriptions []models.Subscription
 
 	err := r.DB.Where("user_id = ?", userID).Find(&subscriptions).Error

@@ -4,6 +4,7 @@ import (
 	"backend/models"
 	"backend/repository"
 	"backend/requests"
+	"backend/utils"
 	"errors"
 
 	"gorm.io/gorm"
@@ -56,50 +57,32 @@ func (s *CategoryService) GetDetail(id uint, userId uint) (*models.Category, err
 }
 
 func (s *CategoryService) Update(id uint, input *requests.CategoryRequest, userId uint) (*models.Category, error) {
-	var category models.Category
-
-	err := s.DB.First(&category, id).Error
-
+	category, err := s.CR.GetByIDAndUserId(id, userId)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("Resources not found")
+		}
 		return nil, err
 	}
 
-	if category.UserId != userId {
-		return nil, ErrForbidden
-	}
-
-	category.UserId = userId
 	category.Name = input.Name
 	category.IconUrl = input.IconUrl
 	category.Color = input.Color
 
-	err = s.DB.Save(&category).Error
-
+	err = s.CR.Update(category)
 	if err != nil {
 		return nil, err
 	}
-
-	return &category, nil
+	return category, nil
 }
 
 func (s *CategoryService) Delete(id uint, userId uint) (bool, error) {
-	var category models.Category
-
-	err := s.DB.First(&category, id).Error
-
+	err := s.CR.Delete(id)
 	if err != nil {
+		if errors.Is(err, utils.ErrNotFound) {
+			return false, errors.New("Resources not found")
+		}
 		return false, err
 	}
-
-	if category.UserId != userId {
-		return false, ErrForbidden
-	}
-
-	err = s.DB.Delete(&category).Error
-
-	if err != nil {
-		return false, err
-	}
-
 	return true, nil
 }

@@ -4,6 +4,7 @@ import (
 	"backend/config"
 	"backend/controllers"
 	db "backend/models/config"
+	"backend/repository"
 	"backend/routes"
 	"backend/routes/middleware"
 	"backend/services"
@@ -42,14 +43,24 @@ func main() {
 	protected_api.Use(middleware.AuthMiddleware([]byte(cfg.JWT.SecretKey)))
 	protected_api.Use(middleware.RateLimitMiddleware())
 
-	expenseServices := services.NewExpenseService(DB)
-	expenseController := controllers.NewExpenseController(expenseServices)
-	userService := services.NewUserService(DB)
-	authController := controllers.NewAuthController(userService, []byte(cfg.JWT.SecretKey))
-	categoryService := services.NewCategoryService(DB)
+	// Repositories
+	userRepo := repository.NewUserRepository(DB)
+	expenseRepo := repository.NewExpenseRepository(DB)
+	categoryRepo := repository.NewCategoryRepository(DB)
+	subscriptionRepo := repository.NewSubscriptionController(DB)
+
+	// Services
+	userService := services.NewUserService(userRepo, []byte(cfg.JWT.SecretKey), cfg.JWT.TokenExp)
+	expenseService := services.NewExpenseService(expenseRepo)
+	categoryService := services.NewCategoryService(categoryRepo)
+	subscriptionService := services.NewSubscriptionService(subscriptionRepo)
+
+	// Controllers
+	authController := controllers.NewAuthController(userService)
+	expenseController := controllers.NewExpenseController(expenseService)
 	categoryController := controllers.NewCategoryController(categoryService)
-	subscriptionService := services.NewSubscriptionService(DB)
 	subscriptionController := controllers.NewSubscriptionController(subscriptionService)
+
 	public_api.POST("/register", authController.Register)
 	public_api.POST("/login", authController.Login)
 

@@ -4,7 +4,7 @@ import (
 	"backend/requests"
 	"backend/services"
 	"backend/utils"
-	"fmt"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -24,9 +24,8 @@ func (c *AuthController) Register(ctx *gin.Context) {
 	var input requests.UserRequest
 
 	if err := ctx.ShouldBindJSON(&input); err != nil {
-		fmt.Println("Validation error: ", err)
-		errors := utils.FormatValidationError(err)
-		utils.ErrorResponse(ctx, "An error occured!", errors, http.StatusBadRequest)
+		errs := utils.FormatValidationError(err)
+		utils.ErrorResponse(ctx, "An error occured!", errs, http.StatusBadRequest)
 		return
 	}
 
@@ -44,6 +43,10 @@ func (c *AuthController) Register(ctx *gin.Context) {
 	user, err := c.UserService.RegisterService(&input)
 
 	if err != nil {
+		if errors.Is(err, utils.ErrEmailExists) {
+			utils.ErrorResponse(ctx, "Email already exists!", nil, http.StatusBadRequest)
+			return
+		}
 		utils.ErrorResponse(ctx, "An error occured!", err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -55,14 +58,18 @@ func (c *AuthController) Login(ctx *gin.Context) {
 	var input requests.UserLoginRequest
 
 	if err := ctx.ShouldBindJSON(&input); err != nil {
-		errors := utils.FormatValidationError(err)
-		utils.ErrorResponse(ctx, "An error occured!", errors, http.StatusBadRequest)
+		errs := utils.FormatValidationError(err)
+		utils.ErrorResponse(ctx, "An error occured!", errs, http.StatusBadRequest)
 		return
 	}
 
 	data, err := c.UserService.LoginService(&input)
 
 	if err != nil {
+		if errors.Is(err, utils.ErrInvalidCredentials) {
+			utils.ErrorResponse(ctx, "Invalid credentials", nil, http.StatusUnauthorized)
+			return
+		}
 		utils.ErrorResponse(ctx, "An error occured!", err.Error(), http.StatusInternalServerError)
 		return
 	}

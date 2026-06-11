@@ -6,13 +6,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func GetUserIdFromSession(ctx *gin.Context) (int, error) {
+func GetUserIdFromSession(ctx *gin.Context) (uint, error) {
 	userId, exists := ctx.Get("user_id")
 	if !exists {
 		return 0, errors.New("user id not found")
 	}
 
-	uid, ok := userId.(int)
+	uid, ok := userId.(uint)
 	if !ok {
 		return 0, errors.New("invalid user id")
 	}

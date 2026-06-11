@@ -2,6 +2,7 @@ package repository
 
 import (
 	"backend/models"
+	"backend/utils"
 	"errors"
 
 	"gorm.io/gorm"
@@ -58,7 +59,7 @@ func (r *ExpenseRepositoryImpl) GetByIdAndUserId(ID uint, userID uint) (*models.
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrNotFound
+			return nil, utils.ErrNotFound
 		}
 
 		return nil, err
@@ -77,7 +78,7 @@ func (r *ExpenseRepositoryImpl) Delete(ID uint) error {
 	result := r.DB.Where("id = ?", ID).Delete(&models.Expense{})
 
 	if result.RowsAffected == 0 {
-		return ErrNotFound
+		return utils.ErrNotFound
 	}
 
 	return result.Error

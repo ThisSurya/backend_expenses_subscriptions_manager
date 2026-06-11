@@ -10,7 +10,6 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 type CategoryController struct {
@@ -59,13 +58,13 @@ func (c *CategoryController) GetById(ctx *gin.Context) {
 		return
 	}
 
-	category, err = c.Service.GetDetail(id, userId)
+	category, err = c.Service.GetDetail(uint(id), userId)
 	if err != nil {
-		if errors.Is(err, services.ErrForbidden) {
+		if errors.Is(err, utils.ErrForbidden) {
 			utils.ErrorResponse(ctx, "Forbidden", nil, http.StatusForbidden)
 			return
 		}
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, utils.ErrNotFound) {
 			utils.ErrorResponse(ctx, "Not found", nil, http.StatusNotFound)
 			return
 		}
@@ -80,8 +79,8 @@ func (c *CategoryController) CreateCategory(ctx *gin.Context) {
 	var input requests.CategoryRequest
 
 	if err := ctx.ShouldBindJSON(&input); err != nil {
-		errors := utils.FormatValidationError(err)
-		utils.ErrorResponse(ctx, "Validation failed", errors, http.StatusBadRequest)
+		errs := utils.FormatValidationError(err)
+		utils.ErrorResponse(ctx, "Validation failed", errs, http.StatusBadRequest)
 		return
 	}
 
@@ -91,7 +90,7 @@ func (c *CategoryController) CreateCategory(ctx *gin.Context) {
 		return
 	}
 
-	category, err := c.Service.Create(&input, userId)
+	category, err := c.Service.Create(&input, int(userId))
 	if err != nil {
 		utils.ErrorResponse(ctx, "Error while creating category", err, http.StatusInternalServerError)
 		return
@@ -104,8 +103,8 @@ func (c *CategoryController) UpdateCategory(ctx *gin.Context) {
 	var input requests.CategoryRequest
 
 	if err := ctx.ShouldBindJSON(&input); err != nil {
-		errors := utils.FormatValidationError(err)
-		utils.ErrorResponse(ctx, "Validation error", errors, http.StatusBadRequest)
+		errs := utils.FormatValidationError(err)
+		utils.ErrorResponse(ctx, "Validation error", errs, http.StatusBadRequest)
 		return
 	}
 
@@ -122,9 +121,17 @@ func (c *CategoryController) UpdateCategory(ctx *gin.Context) {
 		return
 	}
 
-	category, err := c.Service.Update(id, &input, userId)
+	category, err := c.Service.Update(uint(id), &input, userId)
 
 	if err != nil {
+		if errors.Is(err, utils.ErrForbidden) {
+			utils.ErrorResponse(ctx, "Forbidden", nil, http.StatusForbidden)
+			return
+		}
+		if errors.Is(err, utils.ErrNotFound) {
+			utils.ErrorResponse(ctx, "Not found", nil, http.StatusNotFound)
+			return
+		}
 		utils.ErrorResponse(ctx, "Error while update data", err, http.StatusInternalServerError)
 		return
 	}
@@ -148,13 +155,13 @@ func (c *CategoryController) DeleteCategory(ctx *gin.Context) {
 		return
 	}
 
-	_, err = c.Service.Delete(id, userId)
+	_, err = c.Service.Delete(uint(id), userId)
 	if err != nil {
-		if errors.Is(err, services.ErrForbidden) {
+		if errors.Is(err, utils.ErrForbidden) {
 			utils.ErrorResponse(ctx, "Forbidden", nil, http.StatusForbidden)
 			return
 		}
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, utils.ErrNotFound) {
 			utils.ErrorResponse(ctx, "Not found", nil, http.StatusNotFound)
 			return
 		}
