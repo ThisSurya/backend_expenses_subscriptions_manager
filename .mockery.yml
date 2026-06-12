@@ -1,6 +1,6 @@
 all: false
-dir: '{{.InterfaceDir}}'
-filename: mocks_test.go
+dir: '{{.InterfaceDir}}/mocks'
+filename: '{{.InterfaceName}}_mock.go'
 force-file-write: true
 formatter: goimports
 formatter-options:
@@ -13,8 +13,8 @@ formatter-options:
     tab-indent: true
     tab-width: 8
 generate: true
-include-auto-generated: false
-log-level: info
+include-auto-generated: true
+log-level: debug
 structname: '{{.Mock}}{{.InterfaceName}}'
 pkgname: '{{.SrcPackageName}}'
 recursive: false
@@ -22,6 +22,11 @@ require-template-schema-exists: true
 template: testify
 template-schema: '{{.Template}}.schema.json'
 packages:
-  github.com/vektra/mockery/v3/internal/fixtures:
+  backend/repository:
+    interfaces:
+      UserRepository:
+      ExpenseRepository:
+      SubscriptionRepository:
+      CategoryRepository:
     config:
       all: true

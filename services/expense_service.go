@@ -4,6 +4,10 @@ import (
 	"backend/models"
 	"backend/repository"
 	"backend/requests"
+	"backend/utils"
+	"time"
+
+	"github.com/shopspring/decimal"
 )
 
 type ExpenseService struct {
@@ -27,6 +31,14 @@ func (r *ExpenseService) GetByUserId(UserId uint) ([]models.Expense, error) {
 }
 
 func (r *ExpenseService) Create(input *requests.ExpenseRequest, userId int) (*models.Expense, error) {
+	if input.Amount.LessThanOrEqual(decimal.Zero) {
+		return nil, utils.ErrInvalidAmount
+	}
+
+	if input.ExpenseDate.After(time.Now()) {
+		return nil, utils.ErrDateInFuture
+	}
+
 	expense := models.Expense{
 		UserId:        userId,
 		CategoryId:    input.CategoryId,
@@ -40,7 +52,7 @@ func (r *ExpenseService) Create(input *requests.ExpenseRequest, userId int) (*mo
 	err := r.expoRepo.Create(&expense)
 
 	if err != nil {
-		return nil, err
+		return nil, utils.ErrDatabase
 	}
 
 	return &expense, nil
@@ -57,6 +69,14 @@ func (r *ExpenseService) GetDetail(id uint, userId uint) (*models.Expense, error
 }
 
 func (r *ExpenseService) Update(id uint, input *requests.ExpenseRequest, userId uint) (*models.Expense, error) {
+	if input.Amount.LessThanOrEqual(decimal.Zero) {
+		return nil, utils.ErrInvalidAmount
+	}
+
+	if input.ExpenseDate.After(time.Now()) {
+		return nil, utils.ErrDateInFuture
+	}
+
 	expense, err := r.expoRepo.GetByIdAndUserId(id, userId)
 
 	if err != nil {
@@ -72,22 +92,22 @@ func (r *ExpenseService) Update(id uint, input *requests.ExpenseRequest, userId 
 
 	err = r.expoRepo.Update(expense)
 	if err != nil {
-		return nil, err
+		return nil, utils.ErrDatabase
 	}
 
 	return expense, nil
 }
 
-func (r *ExpenseService) Delete(id uint, userId uint) (bool, error) {
+func (r *ExpenseService) Delete(id uint, userId uint) error {
 	_, err := r.expoRepo.GetByIdAndUserId(id, userId)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	err = r.expoRepo.Delete(id)
 	if err != nil {
-		return false, err
+		return utils.ErrDatabase
 	}
 
-	return true, nil
+	return nil
 }

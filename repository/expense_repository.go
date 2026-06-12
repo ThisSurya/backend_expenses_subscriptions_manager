@@ -62,7 +62,7 @@ func (r *ExpenseRepositoryImpl) GetByIdAndUserId(ID uint, userID uint) (*models.
 			return nil, utils.ErrNotFound
 		}
 
-		return nil, err
+		return nil, utils.ErrDatabase
 	}
 
 	return &expense, nil

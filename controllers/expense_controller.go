@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type ExpenseController struct {
@@ -30,11 +31,15 @@ func (c *ExpenseController) GetAllExpenses(ctx *gin.Context) {
 
 	expenses, err := c.Service.GetByUserId(userId)
 	if err != nil {
-		utils.ErrorResponse(ctx, "Failed to retrieve expenses", nil, http.StatusInternalServerError)
+		ctx.JSON(500, gin.H{"error": "Failed to retrieve expenses", "success": false})
 		return
 	}
 
-	utils.SuccessResponse(ctx, "Expenses retrieved successfully", expenses, http.StatusOK)
+	ctx.JSON(200, gin.H{
+		"message": "Expenses retrieved successfully",
+		"data":    expenses,
+		"success": true,
+	})
 }
 
 func (c *ExpenseController) GetExpenseByUserId(ctx *gin.Context) {
@@ -46,19 +51,23 @@ func (c *ExpenseController) GetExpenseByUserId(ctx *gin.Context) {
 
 	expenses, err := c.Service.GetByUserId(userId)
 	if err != nil {
-		utils.ErrorResponse(ctx, "Failed to retrieve expenses", nil, http.StatusInternalServerError)
+		ctx.JSON(500, gin.H{"error": "Failed to retrieve expenses", "success": false})
 		return
 	}
 
-	utils.SuccessResponse(ctx, "Expenses retrieved successfully", expenses, http.StatusOK)
+	ctx.JSON(200, gin.H{
+		"message": "Expenses retrieved successfully",
+		"data":    expenses,
+		"success": true,
+	})
 }
 
 func (c *ExpenseController) CreateExpense(ctx *gin.Context) {
 	var input requests.ExpenseRequest
 
 	if err := ctx.ShouldBindJSON(&input); err != nil {
-		errs := utils.FormatValidationError(err)
-		utils.ErrorResponse(ctx, "An error occured!", errs, http.StatusBadRequest)
+		errors := utils.FormatValidationError(err)
+		utils.ErrorResponse(ctx, "An error occured!", errors, http.StatusBadRequest)
 		return
 	}
 
@@ -99,10 +108,6 @@ func (c *ExpenseController) GetExpenseDetail(ctx *gin.Context) {
 			utils.ErrorResponse(ctx, "Forbidden", nil, http.StatusForbidden)
 			return
 		}
-		if errors.Is(err, utils.ErrNotFound) {
-			utils.ErrorResponse(ctx, "Expenses Not found!", nil, http.StatusNotFound)
-			return
-		}
 		utils.ErrorResponse(ctx, "Error while fetching the detail expenses", err, http.StatusInternalServerError)
 		return
 	}
@@ -121,8 +126,8 @@ func (c *ExpenseController) UpdateExpenses(ctx *gin.Context) {
 
 	var input requests.ExpenseRequest
 	if err := ctx.ShouldBindJSON(&input); err != nil {
-		errs := utils.FormatValidationError(err)
-		utils.ErrorResponse(ctx, "Please check the form", errs, http.StatusBadRequest)
+		errors := utils.FormatValidationError(err)
+		utils.ErrorResponse(ctx, "Please check the form", errors, http.StatusBadRequest)
 		return
 	}
 
@@ -138,7 +143,7 @@ func (c *ExpenseController) UpdateExpenses(ctx *gin.Context) {
 			utils.ErrorResponse(ctx, "Forbidden", nil, http.StatusForbidden)
 			return
 		}
-		if errors.Is(err, utils.ErrNotFound) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			utils.ErrorResponse(ctx, "Not Found", nil, http.StatusNotFound)
 			return
 		}
@@ -164,13 +169,13 @@ func (c *ExpenseController) DeleteExpense(ctx *gin.Context) {
 		return
 	}
 
-	expense, err := c.Service.Delete(uint(id), userId)
+	err = c.Service.Delete(uint(id), userId)
 	if err != nil {
 		if errors.Is(err, utils.ErrForbidden) {
 			utils.ErrorResponse(ctx, "Forbidden", nil, http.StatusForbidden)
 			return
 		}
-		if errors.Is(err, utils.ErrNotFound) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			utils.ErrorResponse(ctx, "Not Found", nil, http.StatusNotFound)
 			return
 		}
@@ -178,5 +183,5 @@ func (c *ExpenseController) DeleteExpense(ctx *gin.Context) {
 		return
 	}
 
-	utils.SuccessResponse(ctx, "Success delete the data", expense, http.StatusOK)
+	utils.SuccessResponse(ctx, "Success delete the data", nil, http.StatusOK)
 }
