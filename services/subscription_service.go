@@ -4,6 +4,10 @@ import (
 	"backend/models"
 	"backend/repository"
 	"backend/requests"
+	"backend/utils"
+	"errors"
+
+	"github.com/shopspring/decimal"
 )
 
 type SubscriptionService struct {
@@ -16,11 +20,15 @@ func NewSubscriptionService(subRepo repository.SubscriptionRepository) *Subscrip
 	}
 }
 
+func checkAmount(amount decimal.Decimal) bool {
+	return amount.GreaterThan(decimal.Zero)
+}
+
 func (s *SubscriptionService) GetByUserId(userId uint) ([]models.Subscription, error) {
 	subscriptions, err := s.subRepo.GetAllByUserID(userId)
 
 	if err != nil {
-		return nil, err
+		return nil, utils.ErrDatabase
 	}
 
 	return subscriptions, nil
@@ -38,6 +46,10 @@ func (s *SubscriptionService) GetDetail(id uint, userId uint) (*models.Subscript
 
 func (s *SubscriptionService) Create(input requests.SubscriptionRequest, userId int) (*models.Subscription, error) {
 
+	if !checkAmount(input.Amount) {
+		return nil, utils.ErrInvalidAmount
+	}
+
 	subscription := models.Subscription{
 		UserId:          userId,
 		Name:            input.Name,
@@ -52,13 +64,17 @@ func (s *SubscriptionService) Create(input requests.SubscriptionRequest, userId 
 	err := s.subRepo.Create(&subscription)
 
 	if err != nil {
-		return nil, err
+		return nil, utils.ErrDatabase
 	}
 
 	return &subscription, nil
 }
 
 func (s *SubscriptionService) Update(id uint, input *requests.SubscriptionRequest, userId int) (*models.Subscription, error) {
+	if !checkAmount(input.Amount) {
+		return nil, utils.ErrInvalidAmount
+	}
+
 	subscription := models.Subscription{
 		Name:            input.Name,
 		UserId:          userId,
@@ -91,7 +107,16 @@ func (s *SubscriptionService) Delete(id uint, userId int) error {
 		return err
 	}
 
-	result := s.subRepo.Delete(id)
+	err = s.subRepo.Delete(id)
 
-	return result
+	if err != nil {
+		// return err
+
+		if errors.Is(err, utils.ErrNotFound) {
+			return utils.ErrNotFound
+		}
+		return utils.ErrDatabase
+	}
+
+	return err
 }

@@ -5,6 +5,7 @@ import (
 	"backend/repository"
 	"backend/requests"
 	"backend/utils"
+	"errors"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -106,6 +107,9 @@ func (r *ExpenseService) Delete(id uint, userId uint) error {
 
 	err = r.expoRepo.Delete(id)
 	if err != nil {
+		if errors.Is(err, utils.ErrNotFound) {
+			return utils.ErrNotFound
+		}
 		return utils.ErrDatabase
 	}
 

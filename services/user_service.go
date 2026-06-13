@@ -5,6 +5,7 @@ import (
 	"backend/repository"
 	"backend/requests"
 	"backend/utils"
+	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -28,17 +29,6 @@ func NewUserService(r repository.UserRepository, jwtSecret []byte, tokenExp time
 // 	users := s.userRepo.
 // }
 
-func (s *UserService) CheckEmailExists(email string) (bool, error) {
-
-	exists, err := s.userRepo.CheckEmailExists(email)
-
-	if err != nil {
-		return false, err
-	}
-
-	return exists, nil
-}
-
 func (s *UserService) RegisterService(input *requests.UserRequest) (*models.User, error) {
 	password, err := utils.HashPassword(input.Password)
 	if err != nil {
@@ -46,12 +36,12 @@ func (s *UserService) RegisterService(input *requests.UserRequest) (*models.User
 	}
 
 	exists, err := s.userRepo.CheckEmailExists(input.Email)
-	if err != nil {
-		return nil, err
-	}
-
 	if exists {
 		return nil, utils.ErrEmailExists
+	}
+
+	if err != nil {
+		return nil, utils.ErrDatabase
 	}
 
 	user := models.User{
@@ -67,7 +57,7 @@ func (s *UserService) RegisterService(input *requests.UserRequest) (*models.User
 	err = s.userRepo.Create(&user)
 
 	if err != nil {
-		return nil, err
+		return nil, utils.ErrDatabase
 	}
 
 	return &user, nil
@@ -77,11 +67,11 @@ func (s *UserService) LoginService(input *requests.UserLoginRequest) (interface{
 	user, err := s.userRepo.GetByEmail(input.Email)
 
 	if err != nil {
-		return nil, err
+		return nil, utils.ErrDatabase
 	}
 
 	if user == nil {
-		return nil, nil
+		return nil, utils.ErrInvalidCredentials
 	}
 
 	check := utils.CheckPasswordHash(input.Password, user.Password)
@@ -119,7 +109,10 @@ func (s *UserService) GetDetail(id uint) (*models.User, error) {
 	user, err := s.userRepo.GetByID(id)
 
 	if err != nil {
-		return nil, err
+		if errors.Is(err, utils.ErrNotFound) {
+			return nil, utils.ErrNotFound
+		}
+		return nil, utils.ErrDatabase
 	}
 
 	return user, nil
@@ -135,6 +128,18 @@ func (s *UserService) Update(id uint, input *requests.UserRequest) (*models.User
 		return nil, utils.ErrNotFound
 	}
 
+	if check.Email != input.Email {
+		exists, err := s.userRepo.CheckEmailExists(input.Email)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if exists {
+			return nil, utils.ErrEmailExists
+		}
+	}
+
 	user := models.User{
 		Username:        input.Username,
 		Email:           input.Email,
@@ -147,17 +152,25 @@ func (s *UserService) Update(id uint, input *requests.UserRequest) (*models.User
 
 	err = s.userRepo.Update(id, &user)
 	if err != nil {
-		return nil, err
+		return nil, utils.ErrDatabase
 	}
 
 	return &user, nil
 }
 
-func (s *UserService) Delete(id int) error {
+func (s *UserService) Delete(id int, userId uint) error {
+	if uint(id) != userId {
+		return utils.ErrNotFound
+	}
+
 	err := s.userRepo.Delete(uint(id))
 
 	if err != nil {
-		return err
+		if errors.Is(err, utils.ErrNotFound) {
+			return utils.ErrNotFound
+		}
+
+		return utils.ErrDatabase
 	}
 
 	return nil

@@ -29,17 +29,6 @@ func (c *AuthController) Register(ctx *gin.Context) {
 		return
 	}
 
-	exists, err := c.UserService.CheckEmailExists(input.Email)
-	if err != nil {
-		utils.ErrorResponse(ctx, "An error occured!", err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if exists {
-		utils.ErrorResponse(ctx, "Email already exists!", nil, http.StatusBadRequest)
-		return
-	}
-
 	user, err := c.UserService.RegisterService(&input)
 
 	if err != nil {

@@ -350,6 +350,23 @@ func TestExpenseService_DeleteNotFound(t *testing.T) {
 	require.ErrorIs(t, err, utils.ErrNotFound)
 }
 
+func TestExpenseService_DeleteNoRowDeleted(t *testing.T) {
+	repo := repository.NewMockExpenseRepository(t)
+
+	repo.On("GetByIdAndUserId", uint(1), uint(1)).
+		Return(&models.Expense{}, nil).
+		Once()
+
+	repo.On("Delete", uint(1)).
+		Return(utils.ErrNotFound).
+		Once()
+
+	service := NewExpenseService(repo)
+
+	err := service.Delete(1, 1)
+	require.ErrorIs(t, err, utils.ErrNotFound)
+}
+
 func TestExpenseService_DeleteRepoError(t *testing.T) {
 	repo := repository.NewMockExpenseRepository(t)
 	repo.On("GetByIdAndUserId", uint(1), uint(1)).

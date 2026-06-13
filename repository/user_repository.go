@@ -67,7 +67,7 @@ func (r *UserRepositoryImpl) Delete(ID uint) error {
 func (r *UserRepositoryImpl) CheckEmailExists(email string) (bool, error) {
 	var exists bool
 
-	err := r.DB.Raw("SELECT EXISTS(SELECT 1 FROM users where email = $1)", email).Scan(&exists).Error
+	err := r.DB.Raw("SELECT 1 FROM users WHERE email = ?", email).Scan(&exists).Error
 
 	if err != nil {
 		return false, err
@@ -82,6 +82,9 @@ func (r *UserRepositoryImpl) GetByEmail(email string) (*models.User, error) {
 	err := r.DB.Where("email = ?", email).Find(&user).Error
 
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, utils.ErrNotFound
+		}
 		return nil, err
 	}
 
