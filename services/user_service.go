@@ -66,12 +66,12 @@ func (s *UserService) RegisterService(input *requests.UserRequest) (*models.User
 func (s *UserService) LoginService(input *requests.UserLoginRequest) (interface{}, error) {
 	user, err := s.userRepo.GetByEmail(input.Email)
 
-	if err != nil {
-		return nil, utils.ErrDatabase
-	}
-
 	if user == nil {
 		return nil, utils.ErrInvalidCredentials
+	}
+
+	if err != nil {
+		return nil, utils.ErrDatabase
 	}
 
 	check := utils.CheckPasswordHash(input.Password, user.Password)

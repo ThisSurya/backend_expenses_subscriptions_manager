@@ -33,6 +33,7 @@ func AuthMiddleware(jwtSecret []byte) gin.HandlerFunc {
 
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				utils.ErrorResponse(c, "Unexpected signing method", nil, http.StatusUnauthorized)
 				return nil, jwt.ErrSignatureInvalid
 			}
 
